@@ -1,8 +1,8 @@
-#ifndef ESPNOW_H
-#define ESPNOW_H
+#ifndef EASY_ESPNOW_H
+#define EASY_ESPNOW_H
 
 #include <Arduino.h>
-#include "../config.h"
+#include "config.h"
 
 #if ESP8266
 #include <ESP8266WiFi.h>
@@ -21,11 +21,40 @@ typedef struct message_generic
 } message_generic;
 
 message_generic msg;
+typedef struct message_from_remote
+{
+#if USE_CMD_L_R
+#if USE_DUAL_BOARDS
+    int16_t cmd_Left_L=0;
+    int16_t cmd_Left_R=0;;
+    int16_t cmd_Right_L=0;
+    int16_t cmd_Right_R=0;
+#else
+    int16_t cmd_L;
+    int16_t cmd_R;
+#endif
+#endif
+} message_from_remote;
 
+    message_from_remote msg_from_remote;
+
+typedef struct message_to_remote
+{
+#if USE_CMD_L_R
+#if USE_DUAL_BOARDS
+    int16_t speed_Left_L;
+    int16_t speed_Left_R;
+    int16_t speed_Right_L;
+    int16_t speed_Right_R;
+#else
+    int16_t speed_L;
+    int16_t speed_R;
+#endif
+#endif
+} message_to_remote;
+
+    message_to_remote msg_from_receiver;
 //================================================================
-
-
-uint8_t *address_target = nullptr;
 
 typedef void (*esp_now_send_cb_t)(const uint8_t *mac_addr, esp_now_send_status_t status);
 //================================================================
@@ -80,10 +109,9 @@ void ESPNOW_registerReceiver(unsigned char *address)
     }
 }
 
-void ESPNOW_Init(ESPNOW_RX_data_callback callback)
+void ESPNOW_Init(ESPNOW_RX_data_callback callback, unsigned char *address_target)
 {
     receiveBytes = callback;
-    address_target = MAC_ADDRESS_LIGHT;
 
 #if 1 // todo is this necessary ?
     // Set device as a Wi-Fi Station
@@ -107,16 +135,11 @@ void ESPNOW_Init(ESPNOW_RX_data_callback callback)
     // get the status of Trasnmitted packet
     esp_now_register_send_cb(OnDataSent);
 
-#if ESP8266
     // Register peer
+#if ESP8266
     esp_now_add_peer(address_target, ESP_NOW_ROLE_COMBO, 1, NULL, 0);
-
 #elif ESP32
-   // ESPNOW_registerReceiver(address_target);
-   
-    ESPNOW_registerReceiver(MAC_ADDRESS_LIGHT);
-    ESPNOW_registerReceiver(MAC_ADDRESS_COFFEE);
-    // ESPNOW_registerReceiver(MAC_ADDRESS_MUSIC);
+    ESPNOW_registerReceiver(address_target);
 #endif
     // Register for a callback function that will be called when data is received
     esp_now_register_recv_cb(OnDataRecv);
@@ -124,16 +147,5 @@ void ESPNOW_Init(ESPNOW_RX_data_callback callback)
     Serial.println("ESPNOW_Init() done");
 }
 
-void ESPNOW_Init()
-{
-    ESPNOW_Init(nullptr);
-}
 
-void ESPNOW_sendBytes(uint8_t *data, uint8_t len)
-{
-    if (address_target != nullptr)
-        esp_now_send(address_target, data, len);
-}
-
-
-#endif // ESPNOW_H
+#endif // EASY_ESPNOW_H
